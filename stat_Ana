@@ -1,0 +1,82 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Dec  2 12:15:51 2017
+
+@author: kabauny
+"""
+import pandas as pd
+from lifelines import KaplanMeierFitter
+kmf = KaplanMeierFitter()
+import matplotlib.pyplot as plt 
+
+
+df = pd.read_csv("/Users/zhongningchen/Documents/MM_research/MM3.csv")
+
+T = df["mmDelt"]
+E = df["mmBool"]
+
+#kmf.fit(T, event_observed=E)
+#kmf.survival_function_.plot()
+
+def orChecker(List, dataFrame):
+    fbol = []
+    bList = []
+    for L in List:
+        bList += [dataFrame[L] >= 3]
+    
+    j = 0
+    while j < len(bList[0]):
+        temp = []
+        i  = 0
+        while i < len(bList):
+            temp += [bList[i][j]]
+            i += 1
+        if True in temp:
+            fbol += [True]
+        else:
+            fbol += [False]
+        j += 1
+    
+    fbol = pd.Series(fbol)
+    return fbol
+    
+ax = plt.subplot(111)
+
+highCopy = orChecker(List = ['CKS1Bcopy','CEP17copy'], dataFrame = df)
+
+
+kmf.fit(T[~highCopy], event_observed = E[~highCopy], label = 'CKS1B and CEP17 < 3')
+kmf.plot(ax = ax, ci_force_lines = False)
+kmf.fit(T[highCopy], event_observed = E[highCopy], label = 'CKS1B and CEP17 >= 3')
+kmf.plot(ax = ax, ci_force_lines = False)
+
+plt.ylim(.5, 1);
+plt.title("Progression from MGUS to MM")
+
+
+#####################################################################
+
+
+
+df0 = df.loc[~highCopy]
+df1 = df.loc[highCopy]
+
+kmf0 = KaplanMeierFitter()
+kmf0.fit(df0['mmDelt'], event_observed = df0['mmBool'])
+kmf1 = KaplanMeierFitter()
+kmf1.fit(df1['mmDelt'], event_observed = df1['mmBool'])
+
+fig, axes = plt.subplots()
+kmf0.plot_loglogs(ax=axes)
+kmf1.plot_loglogs(ax=axes)
+
+axes.legend(['lowCopy', 'highCopy'])
+
+plt.show()
+
+###############################################################
+
+from lifelines.statistics import logrank_test
+
+results = logrank_test(T[~highCopy], T[highCopy], event_observed_A=E[~highCopy], event_observed_B=E[highCopy])
+results.print_summary()
